@@ -1,0 +1,177 @@
+<apex:page sidebar="false" showheader="false" controller="KnockoutShipmentController" docType="html-5.0">
+  <!-- <apex:sectionHeader title="Visualforce + Knockout.js" /> -->
+  <head>
+    <apex:includeScript value="https://cdnjs.cloudflare.com/ajax/libs/knockout/2.1.0/knockout-min.js" />
+    <!--Include Stylsheets for the Mobile look and feel -->
+    <apex:stylesheet value="{!URLFOR($Resource.Mobile_Design_Templates, 
+                    'common/css/app.min.css')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.Mobile_Design_Templates, 
+                    'common/js/jQuery2.0.2.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.Mobile_Design_Templates, 
+                    'common/js/jquery.touchwipe.min.js')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.Mobile_Design_Templates, 
+                    'common/js/main.min.js')}"/>
+    <apex:includeScript value="/canvas/sdk/js/publisher.js"/>
+    
+    <style>
+      /* default S1 color styles */
+      .list-view-header, .data-capture-buttons a {
+        background: -webkit-linear-gradient(#2a93d5,#107abb);
+        background: linear-gradient(#2a93d5,#107abb);
+        box-shadow: 0 1px 3px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.21);
+        color: white;
+        font-weight: bold;
+      }
+      
+      .app-content{ padding-top: 0px !important; }
+    </style>
+  </head>
+  
+  <div class="app-content" id="startPage" data-bind="ifnot: selectedMerchandise">
+    <div class="list-view-header">配送商品</div>
+    <ul class="list-view with-swipe left-thumbs right-one-icons" data-bind="foreach: merchandiseArray">
+      <li>
+        <div class="thumbs">
+          <img class="thumb thumb-3" data-bind="attr: { src: imgURL__c }" />
+        </div>
+        <a href="#" class="content" data-bind="click: toggleSelect">
+          <h2 data-bind="text: Name"></h2>
+          <p data-bind="text: Description__c"></p>
+          <div class="list-view-icons">
+            <span class="icon-right-arrow">&nbsp;</span>
+          </div>
+        </a>
+      </li>
+    </ul>
+  </div>
+    
+  <div class="result-page" id="resultPage" data-bind="if: selectedMerchandise">
+    <div class="list-view-header">配送情報</div>
+    <div data-bind="with: selectedMerchandise">
+      <section class="border-bottom">
+        <div class="content">
+          <h3>Merchandise Name</h3>
+          <div class="form-control-group">
+            <div class="form-control form-control-text">
+              <h1 data-bind="text: Name"></h1>
+              <h2 data-bind="text: Id" id="input_merchId" style="display:none;"></h2>
+            </div>
+          </div>
+        </div>
+      </section>
+                    
+      <section class="border-bottom">
+        <div class="content">
+          <h3>数量</h3>
+          <div class="form-control-group">
+            <div class="form-control form-control-text">
+              <input type="number" id="input_quantity" data-bind="value: Quantity__c" />
+            </div>
+          </div>
+        </div>
+      </section>
+                    
+      <section class="border-bottom">
+        <div class="content">
+          <h3>状況</h3>
+          <div class="form-control-group">
+            <div class="form-control form-control-text">
+              <select id="input_status" data-bind="options: Shipment.availableStatus, value: Shipment.Status__c"></select>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <section class="border-bottom">
+        <div class="content">
+          <h3>配送日時</h3>
+          <div class="form-control-group">
+            <div class="form-control form-control-text">
+              <input type="date" id="input_receivedAt" data-bind="value: Shipment.Received_At__c" />
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <section class="data-capture-buttons one-buttons">
+        <div class="content">
+          <section class="data-capture-buttons one-buttons">
+            <a href="#" data-bind="click: toggleSelect" >戻る</a>
+          </section>
+        </div>
+      </section>
+    </div> 
+  </div>
+
+  <script>
+  var ViewModel = {
+    merchandiseArray: ko.observableArray([]),
+    selectedMerchandise: ko.observable(null)
+  };
+   
+  function Shipment(json) {
+    json = json || {};
+    this.Id = json.Id || null;
+    this.Status__c = json.Status__c || null;
+    this.Received_At__c = json.Received_At__c || null;
+    this.availableStatus = ko.observableArray(['--なし--', '配送完了', '配送準備中', '配送中']);
+  };
+  
+  function Merchandise(json) {
+  console.log(json);
+    this.Id = json.Id || null;
+    this.Name = json.Name || '';
+    this.imgURL__c = json.ImgURL__c || '';
+    this.Description__c = json.Description__c || '';
+    this.Quantity__c = ko.observable(this.Quantity__c || 0);
+    
+    this.Shipment = new Shipment();
+    
+    this.isSelected = ko.computed(function() {
+      return ViewModel.selectedMerchandise() !== null &&
+               ViewModel.selectedMerchandise().Id === this.Id;
+    }, this);
+      
+    this.toggleSelect = function(merchandise) {
+      if (ViewModel.selectedMerchandise()) {
+        ViewModel.selectedMerchandise(null);
+        $("#startPage").show();
+        $("#resultPage").hide();
+        
+      } else {
+        ViewModel.selectedMerchandise(merchandise);
+        //This method will activate the publish button so the form can be submitted 
+        Sfdc.canvas.publisher.publish({name: "publisher.setValidForSubmit", payload:"true"});
+        
+        $("#startPage").hide();
+        $("#resultPage").show();
+      }
+    };
+  }
+  
+  ko.applyBindings(ViewModel);
+  
+  KnockoutShipmentController.getMerchandiseRemoted(function(result, event) {
+    ViewModel.merchandiseArray(ko.utils.arrayMap(result, function(merchandise) {
+      return new Merchandise(merchandise);
+    }));
+  }, { escape: false });
+  
+        Sfdc.canvas.publisher.subscribe({name: "publisher.post", onData:function(e) {
+            // This subscribe fires when the user hits 'Submit' in the publisher
+            Visualforce.remoting.Manager.invokeAction('{!$RemoteAction.KnockoutShipmentController.insertShipment}', $('#input_merchId').text(), $('#input_quantity').val(), $('#input_status').val(), $('#input_receivedAt').val(),
+                function(result, event){
+                    if(event.status){
+                        //Closes the publisher and refreshes the feed
+                        Sfdc.canvas.publisher.publish({name: "publisher.close", payload:{ refresh:"true"}});
+                    } else if (event.type === 'exception'){
+                        console.log(result);
+                    } else {
+                                        
+                    }
+                }
+            );  
+        }});                                           
+
+</script>
+</apex:page>

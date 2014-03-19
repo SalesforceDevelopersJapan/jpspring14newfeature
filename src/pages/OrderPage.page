@@ -1,0 +1,52 @@
+<apex:page standardController="Contact" extensions="OrderController" >
+    <apex:includeScript value="/canvas/sdk/js/30.0/controller.js" />
+    <apex:includeScript value="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js" />
+    
+    <apex:form >
+        <apex:pageBlock id="test" title="オーダー受付フォーム">
+            <apex:pageBlockSection title="顧客情報">
+                <apex:outputField value="{!c.Name}" />
+                <apex:inputField value="{!c.Phone}" />
+                <apex:inputField value="{!c.Email}" />
+                <apex:inputField value="{!c.MailingStreet}" />
+                <apex:inputField value="{!c.MailingCity}" />
+                <apex:inputField value="{!c.MailingState}" />
+                <apex:inputField value="{!c.MailingPostalCode}" />
+                
+                <apex:inputField value="{!pr.Quantity__c}" />
+                <apex:inputField value="{!pr.Description__c}" />
+            </apex:pageBlockSection>
+        
+            
+            <apex:pageBlockSection title="倉庫情報" columns="1">
+                <div style="border: 1; border-color: black; border-style: solid">
+                    <apex:canvasApp developerName="Products_Application" canvasId="prodapp" />
+                </div>
+            </apex:pageBlockSection>
+        
+            <apex:pageBlockButtons >
+                <apex:commandButton value="送信" action="{!submitOrder}" id="submitBtn"  />
+            </apex:pageBlockButtons>
+
+        </apex:pageBlock>
+    </apex:form>
+    
+    <script>
+        $( document ).ready(function() {
+            // Subscribe to the events event1
+            Sfdc.canvas.controller.subscribe({
+                name : 'mynamespace.myevent1', 
+                onData : function(e) {
+                    $('[id*="submitBtn"]').removeClass("btnDisabled");
+                }
+            });
+        });
+            
+        $( document ).ready(function() {
+            window.setTimeout(function() {
+                $('[id*="canvas-frame"]').css("border-width", "1px").css('border-color', "black").css("border-style", "solid");
+               }, 500);
+            $('[id*="submitBtn"]').addClass("btnDisabled");
+        });
+    </script>
+</apex:page>
